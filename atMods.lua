@@ -39,8 +39,10 @@ function SMODS.INIT.atMod()
         ['name'] = 'Recursive Joker',
         ['text'] = {
             [1] = 'If played hand is identical',
-            [2] = 'to previously played hand,',
-            [3] = 'gain {C:chips}+#1#{} hand this round'
+            [2] = 'to last played hand,',
+            [3] = 'gain {C:chips}+#1#{} hand this round',
+            [4] = '{C:inactive}(Cards must be the{C:inactive}',
+            [5] = '{C:inactive}same suit and rank){C:inactive}'
         }
     }
 

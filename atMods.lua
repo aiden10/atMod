@@ -6,11 +6,17 @@
 
 ----------------------------------------------
 ------------MOD CODE -------------------------
+
+local config = {
+    recursive_joker = true
+}
+
 function SMODS.INIT.atMod()
 
     local at_mod = SMODS.findModByID('atMod')
     SMODS.Sprite:new('j_overkill', at_mod.path, 'jokers.png', 71, 95, 'asset_atli'):register()
     SMODS.Sprite:new('j_reverse', at_mod.path, 'jokers.png', 71, 95, 'asset_atli'):register()
+    SMODS.Sprite:new('j_recursive', at_mod.path, 'jokers.png', 71, 95, 'asset_atli'):register()
 
     local loc_overkill = {
         ['name'] = 'Overkill Joker',
@@ -29,6 +35,14 @@ function SMODS.INIT.atMod()
             [3] = '{C:inactive}(Currently {C:mult}+#2#{C:inactive})'
         }
     }
+    local loc_recursive = {
+        ['name'] = 'Recursive Joker',
+        ['text'] = {
+            [1] = 'If played hand is identical',
+            [2] = 'to previously played hand,',
+            [3] = 'gain {C:chips}+#1#{} hand this round'
+        }
+    }
 
     local joker_overkill = SMODS.Joker:new(
         'Overkill Joker', -- Name
@@ -36,8 +50,8 @@ function SMODS.INIT.atMod()
         {extra = {xmult_add = 0.5, xmult = 1, total_chips = 0}}, -- Config
         {x = 0, y = 0}, -- Sprite position
         loc_overkill, -- Localization
-        3,
-        8,
+        2,
+        5,
         true,
         true,
         true,
@@ -57,9 +71,24 @@ function SMODS.INIT.atMod()
         true,
         true
     )
+    
+    local joker_recursive = SMODS.Joker:new(
+        'Recursive Joker',
+        'recursive',
+        {extra = {a_hand = 1, last_hand = "", current_cards = ""}},
+        {x = 2, y = 0},
+        loc_recursive,
+        3,
+        6,
+        true,
+        true,
+        true,
+        true
+    )
 
     joker_overkill:register()
     joker_reverse:register()
+    joker_recursive:register()
 
     local evaluate_playref = G.FUNCS.evaluate_play
     function G.FUNCS.evaluate_play(self, e)
@@ -126,6 +155,33 @@ function SMODS.INIT.atMod()
             }
        end
     end
+
+    if config.recursive_joker then
+        SMODS.Jokers.j_recursive.calculate = function(self, context)
+
+            -- Save previous cards
+            if context.before then
+                self.ability.extra.current_cards = ""
+                for k, v in ipairs(context.full_hand) do
+                    self.ability.extra.current_cards = self.ability.extra.current_cards .. v.base.suit .. v.base.id
+                end
+            end
+
+            if SMODS.end_calculate_context(context) then
+                -- check hands
+                if self.ability.extra.current_cards == self.ability.extra.last_hand then
+                    ease_hands_played(self.ability.extra.a_hand)
+                    return {
+                        message = localize {type = 'variable', key = 'a_hands', vars = {self.ability.extra.a_hand}}
+                    }
+                end
+
+                self.ability.extra.last_hand = self.ability.extra.current_cards
+                self.ability.extra.current_cards = ""
+            end
+        end
+    end
+
 end
 
 local generate_UIBox_ability_tableref = Card.generate_UIBox_ability_table
@@ -146,7 +202,8 @@ function Card.generate_UIBox_ability_table(self)
             loc_vars = {self.ability.extra.xmult_add, self.ability.extra.xmult}
         elseif self.ability.name == 'Reverse Card' then
             loc_vars = {self.ability.extra.mult, self.ability.extra.a_mult}
-
+        elseif self.ability.name == 'Recursive Joker' then 
+            loc_vars = {self.ability.extra.a_hand}
         else
             customJoker = false
         end

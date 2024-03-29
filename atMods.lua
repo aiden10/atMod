@@ -7,8 +7,10 @@
 ----------------------------------------------
 ------------MOD CODE -------------------------
 
+-- these seem kinda weird since they're always true? Might be a steamodded thing
 local config = {
-    recursive_joker = true
+    recursive_joker = true,
+    twilight_joker = true
 }
 
 function SMODS.INIT.atMod()
@@ -17,6 +19,8 @@ function SMODS.INIT.atMod()
     SMODS.Sprite:new('j_overkill', at_mod.path, 'jokers.png', 71, 95, 'asset_atli'):register()
     SMODS.Sprite:new('j_reverse', at_mod.path, 'jokers.png', 71, 95, 'asset_atli'):register()
     SMODS.Sprite:new('j_recursive', at_mod.path, 'jokers.png', 71, 95, 'asset_atli'):register()
+    SMODS.Sprite:new('j_twilight', at_mod.path, 'jokers.png', 71, 95, 'asset_atli'):register()
+
 
     local loc_overkill = {
         ['name'] = 'Overkill Joker',
@@ -43,6 +47,17 @@ function SMODS.INIT.atMod()
             [3] = 'gain {C:chips}+#1#{} hand this round',
             [4] = '{C:inactive}(Cards must be the{C:inactive}',
             [5] = '{C:inactive}same suit and rank){C:inactive}'
+        }
+    }
+
+    local loc_twilight = {
+        ['name'] = 'Twilight Joker',
+        ['text'] = {
+            [1] = 'From 7AM to 7PM:',
+            [2] = '{C:hearts}Hearts{} and {C:diamonds}Diamonds{} gain {C:mult}+#1#{} Mult.',
+            [3] = 'From 7PM to 7AM:',
+            [4] = '{C:clubs}Clubs{} and {C:spades}Spades{} gain {C:chips}+#2#{} chips',
+            [5] = '{C:inactive}(Currently #3#){C:inactive}'
         }
     }
 
@@ -88,9 +103,24 @@ function SMODS.INIT.atMod()
         true
     )
 
+    local joker_twilight = SMODS.Joker:new(
+        'Twilight Joker',
+        'twilight',
+        {extra = {a_mult = 5, a_chips = 15, time = 0, time_string = 'XX:XXPM/AM'}},
+        {x = 1, y = 0},
+        loc_twilight,
+        2,
+        5,
+        true,
+        true,
+        true,
+        true
+    )
+
     joker_overkill:register()
     joker_reverse:register()
     joker_recursive:register()
+    joker_twilight:register()
 
     local evaluate_playref = G.FUNCS.evaluate_play
     function G.FUNCS.evaluate_play(self, e)
@@ -152,7 +182,7 @@ function SMODS.INIT.atMod()
         if SMODS.end_calculate_context(context) then
             return {
                 mult_mod = self.ability.extra.a_mult,
-                message = localize{type='variable',key='a_mult',vars={self.ability.extra.a_mult}},
+                message = localize{type = 'variable', key = 'a_mult', vars = {self.ability.extra.a_mult}},
                 card = self
             }
        end
@@ -184,6 +214,34 @@ function SMODS.INIT.atMod()
         end
     end
 
+    if config.twilight_joker then
+        SMODS.Jokers.j_twilight.calculate = function(self, context)
+            self.ability.extra.time_string = tostring(tonumber(os.date("%I"))) .. ":" .. os.date("%M") .. os.date("%p")
+            if context.before then -- update current time
+                local hour = tonumber(os.date("%H"))
+                self.ability.extra.time = hour
+            end
+
+            if context.individual and context.cardarea == G.play then -- check every played card
+                if self.ability.extra.time >= 7 and self.ability.extra.time <= 19 then -- during the day
+                    if context.other_card:is_suit("Diamonds") or context.other_card:is_suit("Hearts") then -- buff diamonds and hearts
+                        return {
+                            mult = self.ability.extra.a_mult,
+                            card = self
+                        }
+                    end
+                else -- during night
+                    if context.other_card:is_suit("Clubs") or context.other_card:is_suit("Spades") then -- buff spades and clubs
+                        return {
+                            chips = self.ability.extra.a_chips,
+                            card = self
+                        }
+                    end
+                end
+            end
+        end
+    end
+
 end
 
 local generate_UIBox_ability_tableref = Card.generate_UIBox_ability_table
@@ -206,6 +264,8 @@ function Card.generate_UIBox_ability_table(self)
             loc_vars = {self.ability.extra.mult, self.ability.extra.a_mult}
         elseif self.ability.name == 'Recursive Joker' then 
             loc_vars = {self.ability.extra.a_hand}
+        elseif self.ability.name == 'Twilight Joker' then
+            loc_vars = {self.ability.extra.a_mult, self.ability.extra.a_chips, self.ability.extra.time_string}
         else
             customJoker = false
         end

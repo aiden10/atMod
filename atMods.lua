@@ -107,7 +107,7 @@ function SMODS.INIT.atMod()
         'Twilight Joker',
         'twilight',
         {extra = {a_mult = 5, a_chips = 15, time = 0, time_string = 'XX:XXPM/AM'}},
-        {x = 1, y = 0},
+        {x = 3, y = 0},
         loc_twilight,
         2,
         5,

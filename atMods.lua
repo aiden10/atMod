@@ -7,6 +7,15 @@
 ----------------------------------------------
 ------------MOD CODE -------------------------
 
+function in_list(value, list)
+    for _, v in ipairs(list) do
+        if v == value then
+            return true
+        end
+    end
+    return false
+end
+
 -- these seem kinda weird since they're always true? Might be a steamodded thing
 local config = {
     recursive_joker = true,
@@ -16,11 +25,12 @@ local config = {
 function SMODS.INIT.atMod()
 
     local at_mod = SMODS.findModByID('atMod')
+
     SMODS.Sprite:new('j_overkill', at_mod.path, 'jokers.png', 71, 95, 'asset_atli'):register()
     SMODS.Sprite:new('j_reverse', at_mod.path, 'jokers.png', 71, 95, 'asset_atli'):register()
     SMODS.Sprite:new('j_recursive', at_mod.path, 'jokers.png', 71, 95, 'asset_atli'):register()
     SMODS.Sprite:new('j_twilight', at_mod.path, 'jokers.png', 71, 95, 'asset_atli'):register()
-
+    SMODS.Sprite:new('centers', at_mod.path, 'decks.png', 71, 95, 'asset_atli'):register()
 
     local loc_overkill = {
         ['name'] = 'Overkill Joker',
@@ -60,6 +70,22 @@ function SMODS.INIT.atMod()
             [5] = '{C:inactive}(Currently #3#){C:inactive}'
         }
     }
+
+    local loc_sealed = {
+        ['name'] = 'Sealed Deck',
+        ['text'] = {
+            [1] = 'Start run with 3 of each {C:attention}seal{}',
+            [2] = 'on random cards'
+        }
+    }
+
+    local sealed_deck = SMODS.Deck:new(
+        'Sealed Deck',
+        'sealed',
+        {sealed = true},
+        {x = 0, y = 5},
+        loc_sealed
+    )
 
     local joker_overkill = SMODS.Joker:new(
         'Overkill Joker', -- Name
@@ -121,6 +147,36 @@ function SMODS.INIT.atMod()
     joker_reverse:register()
     joker_recursive:register()
     joker_twilight:register()
+    sealed_deck:register()
+
+    local Backapply_to_runRef = Back.apply_to_run
+    function Back.apply_to_run(arg_56_0)
+        Backapply_to_runRef(arg_56_0)
+
+        if arg_56_0.effect.config.sealed then
+            G.E_MANAGER:add_event(Event({
+                func = function()
+                    local seals_added = 0
+                    local numbers = {}
+                    while seals_added < 12 do 
+                        local random_num = math.random(52)
+                        if not in_list(random_num, numbers) then
+                            table.insert(numbers, 1, random_num)
+                            local card = G.playing_cards[random_num]
+                            if seals_added < 3 then card:set_seal('Purple', true, true)
+                            elseif seals_added < 6 then card:set_seal('Red', true, true)
+                            elseif seals_added < 9 then card:set_seal('Blue', true, true)
+                            else card:set_seal('Gold', true, true)
+                            end
+                            seals_added = seals_added + 1
+                        end
+                    end   
+                    return true     
+                end
+            }))
+        end
+    end
+    
 
     local evaluate_playref = G.FUNCS.evaluate_play
     function G.FUNCS.evaluate_play(self, e)

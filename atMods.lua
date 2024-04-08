@@ -30,6 +30,7 @@ function SMODS.INIT.atMod()
     SMODS.Sprite:new('j_reverse', at_mod.path, 'jokers.png', 71, 95, 'asset_atli'):register()
     SMODS.Sprite:new('j_recursive', at_mod.path, 'jokers.png', 71, 95, 'asset_atli'):register()
     SMODS.Sprite:new('j_twilight', at_mod.path, 'jokers.png', 71, 95, 'asset_atli'):register()
+    SMODS.Sprite:new('j_promissory', at_mod.path, 'jokers.png', 71, 95, 'asset_atli'):register()
     SMODS.Sprite:new('centers', at_mod.path, 'decks.png', 71, 95, 'asset_atli'):register()
 
     local loc_overkill = {
@@ -45,7 +46,7 @@ function SMODS.INIT.atMod()
         ['name'] = 'Reverse Card',
         ['text'] = {
             [1] = 'Gains {C:mult}+#1#{} Mult if hand',
-            [2] = "triggers the ability Boss Blind's",
+            [2] = "triggers the Boss Blind's ability",
             [3] = '{C:inactive}(Currently {C:mult}+#2#{C:inactive})'
         }
     }
@@ -64,17 +65,26 @@ function SMODS.INIT.atMod()
         ['name'] = 'Twilight Joker',
         ['text'] = {
             [1] = 'From 7AM to 7PM:',
-            [2] = '{C:hearts}Hearts{} and {C:diamonds}Diamonds{} gain {C:mult}+#1#{} Mult.',
+            [2] = '{C:hearts}Hearts{} and {C:diamonds}Diamonds{} gain {C:mult}+#1#{} Mult when scored.',
             [3] = 'From 7PM to 7AM:',
-            [4] = '{C:clubs}Clubs{} and {C:spades}Spades{} gain {C:chips}+#2#{} chips',
+            [4] = '{C:clubs}Clubs{} and {C:spades}Spades{} gain {C:chips}+#2#{} Chips when scored',
             [5] = '{C:inactive}(Currently #3#){C:inactive}'
+        }
+    }
+
+    local loc_promissory = {
+        ['name'] = 'Promissory Note',
+        ['text'] = {
+            [1] = 'After defeating the Boss Blind',
+            [2] = 'gain {C:money}$#1#{}, then',
+            [3] = 'destroy this card'
         }
     }
 
     local loc_sealed = {
         ['name'] = 'Sealed Deck',
         ['text'] = {
-            [1] = 'Start run with 3 of each {C:attention}seal{}',
+            [1] = 'Start run with 2 of each {C:attention}seal{}',
             [2] = 'on random cards'
         }
     }
@@ -142,11 +152,25 @@ function SMODS.INIT.atMod()
         true,
         true
     )
+    local joker_promissory = SMODS.Joker:new(
+        'Promissory Note',
+        'promissory',
+        {extra = {money = 8}},
+        {x = 4, y = 0},
+        loc_promissory,
+        1,
+        2,
+        true,
+        true,
+        true,
+        true
+    )
 
     joker_overkill:register()
     joker_reverse:register()
     joker_recursive:register()
     joker_twilight:register()
+    joker_promissory:register()
     sealed_deck:register()
 
     local Backapply_to_runRef = Back.apply_to_run
@@ -158,14 +182,14 @@ function SMODS.INIT.atMod()
                 func = function()
                     local seals_added = 0
                     local numbers = {}
-                    while seals_added < 12 do 
+                    while seals_added < 8 do 
                         local random_num = math.random(52)
                         if not in_list(random_num, numbers) then
                             table.insert(numbers, 1, random_num)
                             local card = G.playing_cards[random_num]
-                            if seals_added < 3 then card:set_seal('Purple', true, true)
-                            elseif seals_added < 6 then card:set_seal('Red', true, true)
-                            elseif seals_added < 9 then card:set_seal('Blue', true, true)
+                            if seals_added < 2 then card:set_seal('Purple', true, true)
+                            elseif seals_added < 4 then card:set_seal('Red', true, true)
+                            elseif seals_added < 6 then card:set_seal('Blue', true, true)
                             else card:set_seal('Gold', true, true)
                             end
                             seals_added = seals_added + 1
@@ -298,6 +322,31 @@ function SMODS.INIT.atMod()
         end
     end
 
+    SMODS.Jokers.j_promissory.calculate = function(self, context)
+        if context.end_of_round and not context.individual and not context.repetition and G.GAME.blind.boss then
+            G.E_MANAGER:add_event(Event({
+                func = function()
+                    play_sound('tarot1')
+                    self.T.r = -0.2
+                    self:juice_up(0.3, 0.4)
+                    self.states.drag.is = true
+                    self.children.center.pinch.x = true
+                    G.E_MANAGER:add_event(Event({trigger = 'after', delay = 0.3, blockable = false,
+                        func = function()
+                                G.jokers:remove_card(self)
+                                self:remove()
+                                self = nil
+                            return true; end})) 
+                    return true
+                end
+            })) 
+            return {
+                message = localize('$')..8,
+                dollars = 8,
+                colour = G.C.MONEY
+            }
+        end
+    end
 end
 
 local generate_UIBox_ability_tableref = Card.generate_UIBox_ability_table
@@ -322,6 +371,8 @@ function Card.generate_UIBox_ability_table(self)
             loc_vars = {self.ability.extra.a_hand}
         elseif self.ability.name == 'Twilight Joker' then
             loc_vars = {self.ability.extra.a_mult, self.ability.extra.a_chips, self.ability.extra.time_string}
+        elseif self.ability.name == 'Promissory Note' then
+            loc_vars = {self.ability.extra.money}
         else
             customJoker = false
         end
@@ -363,5 +414,6 @@ function Card.generate_UIBox_ability_table(self)
 
     return generate_UIBox_ability_tableref(self)
 end
+
 ----------------------------------------------
 ------------MOD CODE END----------------------

@@ -1,4 +1,4 @@
-# Currently 6 Jokers, 1 Deck
+# Balatro Mod
 
 ## Jokers
 ### Recursive Joker
